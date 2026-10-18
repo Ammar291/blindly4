@@ -34,6 +34,15 @@ internal static class SelfTest
         Check(Native.ParseKey("enter").SequenceEqual(Native.ParseKey("return")));
         Reject(() => Native.ParseKey("ctrl+bogus")); Reject(() => Native.ParseKey("unknown+a"));
         Check(System.Runtime.InteropServices.Marshal.SizeOf<Native.INPUT>() == (IntPtr.Size == 8 ? 40 : 28));
+        Check(Registry.Get("find").Options.Contains("identifier") && Registry.Get("find").Options.Contains("under"));
+        Check(Registry.Get("find").Risk == "read-only");
+        Check(Desktop.Matches("identifier", "movie_player", "movie_player")); Check(!Desktop.Matches("identifier", "movie_player_x", "movie_player"));
+        Check(!Desktop.Matches("identifier", "Movie_Player", "movie_player")); Check(!Desktop.Matches("identifier", null, "movie_player"));
+        Check(Desktop.Matches("title", "Pause (k)", "pause")); Check(!Desktop.Matches("title", null, "pause"));
+        Check(Desktop.Filters.Select(f => f.Key).First() == "identifier" && Desktop.Filters.Select(f => f.Key).Last() == "value");
+        Reject(() => new Invocation(Registry.Get("find"), ["--under"]));
+        Check(Registry.Get("hover").Risk == "ui-mutation" && Registry.Get("hover").Options.SequenceEqual(new[] { "pid", "x", "y" }));
+        Reject(() => new Invocation(Registry.Get("hover"), ["--x", "NaN"]).Number("x"));
         Program.Json(new { ok = true, tests = passed, platform = "windows", suite = "permission-free" });
         return 0;
     }

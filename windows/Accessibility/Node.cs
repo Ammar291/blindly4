@@ -37,6 +37,9 @@ internal sealed class Node(AutomationElement? element, int pid)
             return text?.DocumentRange.GetText(65536);
         }
     }
+    internal string? Title => Root ? Native.ProcessName(Pid) : Element!.Current.Name;
+    internal string? Description => Root ? null : string.IsNullOrEmpty(Element!.Current.HelpText) ? Element.Current.Name : Element.Current.HelpText;
+    internal string? Identifier => Root ? null : Element!.Current.AutomationId;
     internal bool Writable => !Root && !Element!.Current.IsPassword && Element.Current.IsEnabled &&
         new[] { "AXTextField", "AXTextArea", "AXComboBox" }.Contains(Role) &&
         Pattern<ValuePattern>(ValuePattern.Pattern) is { Current.IsReadOnly: false };
@@ -57,9 +60,9 @@ internal sealed class Node(AutomationElement? element, int pid)
         if (path != null) row["path"] = path;
         if (Root) { row["title"] = Native.ProcessName(Pid); return row; }
         var current = Element!.Current;
-        row["title"] = current.Name;
-        row["description"] = string.IsNullOrEmpty(current.HelpText) ? current.Name : current.HelpText;
-        row["identifier"] = current.AutomationId;
+        row["title"] = Title;
+        row["description"] = Description;
+        row["identifier"] = Identifier;
         row["subrole"] = current.ControlType.ProgrammaticName;
         row["value"] = Value;
         row["enabled"] = current.IsEnabled;

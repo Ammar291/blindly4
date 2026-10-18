@@ -17,9 +17,9 @@ internal sealed class Desktop
             node = node.Children().Skip(index).FirstOrDefault() ?? throw CliError.Access($"Path {path} no longer exists; rediscover the target");
         return node;
     }
-    internal IEnumerable<(Node Node, string Path)> Walk(int depth)
+    internal IEnumerable<(Node Node, string Path)> Walk(int depth, string under = "")
     {
-        return Visit(root, "", depth);
+        return Visit(Resolve(under), under, depth);
         static IEnumerable<(Node, string)> Visit(Node n, string path, int remaining)
         {
             yield return (n, path);
@@ -65,18 +65,28 @@ internal sealed class Desktop
             Console.WriteLine($"{path,-18} {row["role"]} {row.GetValueOrDefault("title")} {row.GetValueOrDefault("value")}");
         }
     }
+    // Cheapest UI Automation reads first. Each read is a cross-process call, so a node is
+    // rejected on its first failing filter and the full Detail is built only for matches.
+    internal static readonly (string Key, Func<Node, string?> Read)[] Filters = [
+        ("identifier", n => n.Identifier), ("role", n => n.Role), ("title", n => n.Title),
+        ("description", n => n.Description), ("value", n => n.Value)
+    ];
+    internal static bool Matches(string key, string? actual, string wanted) => key == "identifier"
+        ? string.Equals(actual ?? "", wanted, StringComparison.Ordinal)
+        : (actual ?? "").Contains(wanted, StringComparison.OrdinalIgnoreCase);
     internal static void Find(Invocation i)
     {
-        string[] filters = ["title", "role", "value", "description"];
-        if (!filters.Any(i.Has)) throw new CliError("find requires --title, --role, --value or --description");
+        var active = Filters.Where(f => i.Has(f.Key)).ToArray();
+        if (active.Length == 0) throw new CliError("find requires --title, --role, --value, --description or --identifier");
         int limit = i.Integer("limit", 25, 1, 10000), visited = 0;
+        var under = i.Optional("under") ?? "";
+        Guards.Path(under);
         var matches = new List<object>();
         bool truncated = false;
-        foreach (var (node, path) in new Desktop(i.Pid).Walk(i.Integer("depth", 8, 0, 64)))
+        foreach (var (node, path) in new Desktop(i.Pid).Walk(i.Integer("depth", 8, 0, 64), under))
         {
             if (++visited > 10000) { truncated = true; break; }
-            var row = node.Detail(path);
-            if (filters.Where(i.Has).All(k => (row.GetValueOrDefault(k)?.ToString() ?? "").Contains(i.Value(k), StringComparison.OrdinalIgnoreCase))) matches.Add(row);
+            if (active.All(f => Matches(f.Key, f.Read(node), i.Value(f.Key)))) matches.Add(node.Detail(path));
             if (matches.Count >= limit) { truncated = true; break; }
         }
         Program.Json(new { matches, truncated });

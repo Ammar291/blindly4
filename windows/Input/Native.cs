@@ -83,6 +83,13 @@ internal static class Native
         RequirePoint(pid, x, y);
         Send(pid, Mouse(2), Mouse(4));
     }
+    internal static void Hover(int pid, int x, int y)
+    {
+        RequireForeground(pid); RequirePoint(pid, x, y);
+        // Two positions so the target always observes movement, even if the pointer was already there.
+        if (!SetCursorPos(x + 1, y) || !SetCursorPos(x, y)) throw CliError.Access("Cannot move the mouse to target");
+        RequirePoint(pid, x, y);
+    }
     static INPUT Mouse(uint flags, uint data = 0) => new() { type = 0, data = new Union { mouse = new MOUSEINPUT { flags = flags, data = data } } };
     internal static void Scroll(int pid, string direction, int amount)
     {

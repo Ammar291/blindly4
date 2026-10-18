@@ -12,6 +12,13 @@ internal static class Input
         int pid = Target(i); Native.Click(pid, (int)Math.Round(x), (int)Math.Round(y));
         Program.Json(new { x, y, pid, ok = true });
     }
+    internal static void Hover(Invocation i)
+    {
+        var x = i.Number("x"); var y = i.Number("y");
+        if (Math.Abs(x) > 100000 || Math.Abs(y) > 100000) throw new CliError("Screen coordinate out of range");
+        int pid = Target(i); Native.Hover(pid, (int)Math.Round(x), (int)Math.Round(y));
+        Program.Json(new { x, y, pid, ok = true });
+    }
     internal static void Type(Invocation i)
     {
         var text = i.Value("text"); int pid = Target(i); Native.Text(pid, text);

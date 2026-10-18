@@ -8,5 +8,6 @@
     <Nullable>enable</Nullable>
     <AssemblyName>blindly4</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 </Project>
