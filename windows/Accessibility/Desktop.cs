@@ -38,22 +38,24 @@ internal sealed class Desktop
         var desktop = new Desktop(i.Pid);
         int remaining = i.Integer("max-nodes", 250, 1, 10000);
         int depth = i.Integer("depth", 4, 0, 64);
-        bool truncated = false;
-        Dictionary<string, object?> Build(Node n, int d)
+        bool xml = Xml.Format(i) == "xml", truncated = false;
+        Dictionary<string, object?> Build(Node n, int d, string path)
         {
             remaining--;
-            var row = n.Detail();
+            var row = n.Detail(xml ? path : null);
             var children = new List<object>();
+            int index = 0;
             foreach (var child in n.Children())
             {
                 if (remaining == 0 || d == 0) { truncated = true; break; }
-                children.Add(Build(child, d - 1));
+                children.Add(Build(child, d - 1, path.Length == 0 ? $"{index}" : $"{path}.{index}"));
+                index++;
             }
             if (children.Count > 0) row["children"] = children;
             return row;
         }
-        var tree = Build(desktop.root, depth);
-        Program.Json(new { tree, truncated });
+        var tree = Build(desktop.root, depth, "");
+        if (xml) Xml.Tree(tree, truncated); else Program.Json(new { tree, truncated });
     }
     internal static void Show(Invocation i)
     {
@@ -81,7 +83,8 @@ internal sealed class Desktop
         int limit = i.Integer("limit", 25, 1, 10000), visited = 0;
         var under = i.Optional("under") ?? "";
         Guards.Path(under);
-        var matches = new List<object>();
+        bool xml = Xml.Format(i) == "xml";
+        var matches = new List<Dictionary<string, object?>>();
         bool truncated = false;
         foreach (var (node, path) in new Desktop(i.Pid).Walk(i.Integer("depth", 8, 0, 64), under))
         {
@@ -89,7 +92,7 @@ internal sealed class Desktop
             if (active.All(f => Matches(f.Key, f.Read(node), i.Value(f.Key)))) matches.Add(node.Detail(path));
             if (matches.Count >= limit) { truncated = true; break; }
         }
-        Program.Json(new { matches, truncated });
+        if (xml) Xml.Matches(matches, truncated); else Program.Json(new { matches, truncated });
     }
     internal static void Focused(Invocation i)
     {
@@ -102,8 +105,14 @@ internal sealed class Desktop
     {
         var path = i.Value("path");
         var target = new Desktop(i.Pid).Resolve(path);
+        Expect(i, target);
         mutate(target);
         Program.Json(new { path, action, ok = true });
+    }
+    static void Expect(Invocation i, Node target)
+    {
+        if (i.Has("expect-description") && !(target.Detail()["description"]?.ToString() ?? "").Contains(i.Value("expect-description"), StringComparison.OrdinalIgnoreCase))
+            throw new CliError($"{i.Value("path")} does not match --expect-description");
     }
     internal static void Press(Invocation i)
     {
@@ -111,8 +120,7 @@ internal sealed class Desktop
         var desktop = new Desktop(i.Pid);
         var path = i.Value("path");
         var target = desktop.Resolve(path);
-        if (i.Has("expect-description") && !(target.Detail()["description"]?.ToString() ?? "").Contains(i.Value("expect-description"), StringComparison.OrdinalIgnoreCase))
-            throw new CliError("press target does not match --expect-description");
+        Expect(i, target);
         if (i.Has("require-value-path") && !desktop.Resolve(i.Value("require-value-path")).ExactDraft(i.Value("require-value")))
             throw CliError.Access("Press blocked: the draft does not exactly match --require-value");
         target.Press();

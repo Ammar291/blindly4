@@ -43,6 +43,18 @@ internal static class SelfTest
         Reject(() => new Invocation(Registry.Get("find"), ["--under"]));
         Check(Registry.Get("hover").Risk == "ui-mutation" && Registry.Get("hover").Options.SequenceEqual(new[] { "pid", "x", "y" }));
         Reject(() => new Invocation(Registry.Get("hover"), ["--x", "NaN"]).Number("x"));
+        Check(Registry.Get("open").Options.Contains("chrome-profile"));
+        Check(Registry.Get("tree").Options.Contains("format") && Registry.Get("find").Options.Contains("format"));
+        Check(Registry.Get("set-value").Options.Contains("expect-description") && Registry.Get("focus").Options.Contains("expect-description"));
+        Check(Xml.Element(new Dictionary<string, object?> { ["role"] = "AXButton", ["path"] = "0.1", ["title"] = "Pause (k)", ["description"] = "Pause (k)", ["actions"] = new[] { "AXPress" } })
+            == "<AXButton path=\"0.1\" title=\"Pause (k)\" actions=\"AXPress\" />");
+        Check(Xml.Element(new Dictionary<string, object?> { ["role"] = "AXStaticText", ["title"] = "a<b & \"c\"" }) == "<AXStaticText title=\"a&lt;b &amp; &quot;c&quot;\" />");
+        Check(Xml.Element(new Dictionary<string, object?> { ["role"] = "AXLink", ["title"] = "x", ["description"] = "y", ["identifier"] = "video-title", ["enabled"] = false, ["position"] = new { x = 1.0, y = 2.0 }, ["size"] = new { width = 3.0, height = 4.0 } })
+            == "<AXLink title=\"x\" id=\"video-title\" description=\"y\" frame=\"1,2,3,4\" enabled=\"false\" />");
+        Reject(() => Launch.ProfileDir("relative\\dir")); Reject(() => Launch.ProfileDir("C:\\a\"b"));
+        Check(Launch.ProfileDir("C:\\profiles\\run1") == "C:\\profiles\\run1");
+        Check(Launch.Arguments("https://www.youtube.com/", "C:\\p\\run 1\\") == "\"--user-data-dir=C:\\p\\run 1\" --force-renderer-accessibility --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --window-size=1400,1000 --new-window \"https://www.youtube.com/\"");
+        Reject(() => Xml.Format(new Invocation(Registry.Get("find"), ["--format", "yaml"])));
         Program.Json(new { ok = true, tests = passed, platform = "windows", suite = "permission-free" });
         return 0;
     }
