@@ -46,6 +46,7 @@ internal static class SelfTest
         Check(Registry.Get("open").Options.Contains("chrome-profile"));
         Check(Registry.Get("tree").Options.Contains("format") && Registry.Get("find").Options.Contains("format"));
         Check(Registry.Get("set-value").Options.Contains("expect-description") && Registry.Get("focus").Options.Contains("expect-description"));
+        Check(new[] { "path", "under", "title", "role", "identifier", "depth" }.All(Registry.Get("press").Options.Contains));
         Check(Xml.Element(new Dictionary<string, object?> { ["role"] = "AXButton", ["path"] = "0.1", ["title"] = "Pause (k)", ["description"] = "Pause (k)", ["actions"] = new[] { "AXPress" } })
             == "<AXButton path=\"0.1\" title=\"Pause (k)\" actions=\"AXPress\" />");
         Check(Xml.Element(new Dictionary<string, object?> { ["role"] = "AXStaticText", ["title"] = "a<b & \"c\"" }) == "<AXStaticText title=\"a&lt;b &amp; &quot;c&quot;\" />");

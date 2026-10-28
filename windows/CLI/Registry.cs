@@ -33,7 +33,7 @@ internal static class Registry
         Mutate("focus", PathArgs + " [--expect-description TEXT]", "Focus an element.", i => Desktop.Mutate(i, "AXFocused", n => n.Focus())),
         Mutate("show-menu", PathArgs, "Expand an accessible menu control when supported.", i => Desktop.Mutate(i, "AXShowMenu", n => n.Expand())),
         Mutate("scroll-to", PathArgs, "Scroll an accessible item into view.", i => Desktop.Mutate(i, "AXScrollToVisible", n => n.ScrollTo())),
-        Mutate("press", PathArgs + " [--expect-description TEXT] [--require-selected] [--require-value-path PATH --require-value TEXT]", "Invoke or select a control; may submit external data.", Desktop.Press, "external-commit"),
+        Mutate("press", "(--path INDEX[.INDEX...] | --under PATH [--title TEXT] [--role ROLE] [--identifier ID] [--depth N]) [--pid PID] [--expect-description TEXT] [--require-selected] [--require-value-path PATH --require-value TEXT]", "Invoke or select a control (by path, or the first match below --under when the press runs); may submit external data.", Desktop.Press, "external-commit"),
         Mutate("set-value", PathArgs + " --value TEXT [--expect-description TEXT]", "Set a writable ValuePattern.", i => Desktop.Mutate(i, "AXValue", n => n.SetValue(i.Value("value")))),
         Mutate("set-selected-text", PathArgs + " --value TEXT", "Replace selected text in a focused writable control.", Input.SelectedText),
         Mutate("click", "--x X --y Y [--pid PID]", "Click a screen coordinate in the verified target application.", Input.Click),
@@ -44,5 +44,5 @@ internal static class Registry
         Mutate("key", "--key KEY [--pid PID] [--target-path PATH --require-value TEXT]", "Inject a key; a guarded key requires exact focused draft and PID.", Input.Key, "external-commit")
     ];
     internal static Command Get(string name) => All.FirstOrDefault(c => c.Name == name) ?? throw new CliError($"Unknown command: {name}");
-    internal static string Help() => "Blindly4 for Windows — native UI Automation, stateless CLI\n" + string.Join("\n", All.Select(c => $"  {c.Name} {c.Arguments}\n    {c.Summary} [{c.Risk}]")) + "\nGlobal: --profile, --self-test. Paths are live: rediscover before input. Serialize desktop workflows.";
+    internal static string Help() => "Blindly4 for Windows — native UI Automation, stateless CLI\n" + string.Join("\n", All.Select(c => $"  {c.Name} {c.Arguments}\n    {c.Summary} [{c.Risk}]")) + "\nGlobal: --profile, --self-test, --at UNIX_SECONDS (wait until then, then run). Paths are live: rediscover before input. Serialize desktop workflows.";
 }

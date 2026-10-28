@@ -109,18 +109,30 @@ internal sealed class Desktop
         mutate(target);
         Program.Json(new { path, action, ok = true });
     }
-    static void Expect(Invocation i, Node target)
+    static void Expect(Invocation i, Node target, string? path = null)
     {
         if (i.Has("expect-description") && !(target.Detail()["description"]?.ToString() ?? "").Contains(i.Value("expect-description"), StringComparison.OrdinalIgnoreCase))
-            throw new CliError($"{i.Value("path")} does not match --expect-description");
+            throw new CliError($"{path ?? i.Value("path")} does not match --expect-description");
+    }
+    // Instead of --path, --under PATH with --title/--role/--identifier presses the first match below PATH
+    // as it is when the press runs, so a press scheduled with --at survives the page renumbering children.
+    static (Node Node, string Path) Target(Invocation i, Desktop desktop)
+    {
+        if (i.Has("path")) return (desktop.Resolve(i.Value("path")), i.Value("path"));
+        var active = Filters.Where(f => i.Has(f.Key)).ToArray();
+        if (!i.Has("under") || active.Length == 0) throw new CliError("press needs --path, or --under with --title, --role or --identifier");
+        var under = i.Value("under");
+        Guards.Path(under);
+        foreach (var (node, path) in desktop.Walk(i.Integer("depth", 8, 0, 64), under))
+            if (active.All(f => Matches(f.Key, f.Read(node), i.Value(f.Key)))) return (node, path);
+        throw CliError.Access($"No element below {under} matches");
     }
     internal static void Press(Invocation i)
     {
         i.Pair("require-value-path", "require-value");
         var desktop = new Desktop(i.Pid);
-        var path = i.Value("path");
-        var target = desktop.Resolve(path);
-        Expect(i, target);
+        var (target, path) = Target(i, desktop);
+        Expect(i, target, path);
         if (i.Has("require-value-path") && !desktop.Resolve(i.Value("require-value-path")).ExactDraft(i.Value("require-value")))
             throw CliError.Access("Press blocked: the draft does not exactly match --require-value");
         target.Press();
