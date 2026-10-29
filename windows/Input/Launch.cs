@@ -28,21 +28,28 @@ internal static class Launch
         return candidates.FirstOrDefault(File.Exists) ?? throw CliError.Access("Google Chrome is not installed");
     }
     // Trailing backslashes are trimmed so the closing quote is not escaped.
-    internal static string Arguments(string url, string profile) =>
-        string.Join(' ', Flags.Prepend($"\"--user-data-dir={profile.TrimEnd('\\')}\"").Append($"\"{url}\""));
+    internal static string Arguments(string url, string profile, bool sandbox) =>
+        string.Join(' ', Flags.Concat(sandbox ? Sandbox.ChromeFlags : Array.Empty<string>()).Prepend($"\"--user-data-dir={profile.TrimEnd('\\')}\"").Append($"\"{url}\""));
     internal static int Chrome(string url, string profile)
     {
         Directory.CreateDirectory(profile);
         // ShellExecute does not hand Chrome our stdout/stderr, so callers reading blindly4's output are not
         // left waiting on a pipe that the long-lived browser keeps open.
-        var start = new ProcessStartInfo(ChromePath(), Arguments(url, profile)) { UseShellExecute = true };
+        var start = new ProcessStartInfo(ChromePath(), Arguments(url, profile, Sandbox.Active)) { UseShellExecute = true };
         using var process = Process.Start(start) ?? throw CliError.Access("Chrome did not start");
         for (int attempt = 0; attempt < 150; attempt++)
         {
-            if (Native.Windows().Any(w => w.Pid == process.Id)) return process.Id;
+            if (Native.Windows().Any(w => w.Pid == process.Id)) return Placed(process.Id);
             if (process.HasExited) break;
             Thread.Sleep(100);
         }
         throw CliError.Access("Chrome did not open a window for the isolated profile");
+    }
+    // In sandbox mode the window leaves the screen as soon as it exists, and again after Chrome has applied
+    // the placement it remembered for the profile.
+    static int Placed(int pid)
+    {
+        if (Sandbox.Active) { Sandbox.Hide(pid); Thread.Sleep(500); Sandbox.Hide(pid); }
+        return pid;
     }
 }

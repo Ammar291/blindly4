@@ -58,6 +58,7 @@ internal static class Input
     }
     internal static void Paste(Invocation i)
     {
+        if (Sandbox.Active) throw Sandbox.Refused("paste");
         string text = i.Value("text"); string? path = i.Optional("target-path");
         if (path != null && !i.Has("pid")) throw new CliError("paste --target-path requires --pid");
         int pid = i.Pid;

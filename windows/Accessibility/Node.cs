@@ -98,6 +98,7 @@ internal sealed class Node(AutomationElement? element, int pid)
     internal void Focus()
     {
         if (Root) throw new CliError("Choose a control path");
+        if (Sandbox.Active) { Sandbox.Click(this); return; }
         Native.Activate(Pid);
         Element!.SetFocus();
         if (!HasFocus) throw CliError.Access("The target did not receive keyboard focus");
@@ -105,10 +106,12 @@ internal sealed class Node(AutomationElement? element, int pid)
     internal void SetValue(string text)
     {
         if (!Writable) throw new CliError("Target is not a writable UI Automation text control");
+        if (Sandbox.Active) { Sandbox.Type(this, text); return; }
         Pattern<ValuePattern>(ValuePattern.Pattern)!.SetValue(text);
     }
     internal void Press()
     {
+        if (Sandbox.Active) { Sandbox.Click(this); return; }
         if (Pattern<InvokePattern>(InvokePattern.Pattern) is { } invoke) invoke.Invoke();
         else if (Pattern<SelectionItemPattern>(SelectionItemPattern.Pattern) is { } select) select.Select();
         else if (Pattern<TogglePattern>(TogglePattern.Pattern) is { } toggle) toggle.Toggle();

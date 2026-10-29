@@ -44,5 +44,5 @@ internal static class Registry
         Mutate("key", "--key KEY [--pid PID] [--target-path PATH --require-value TEXT]", "Inject a key; a guarded key requires exact focused draft and PID.", Input.Key, "external-commit")
     ];
     internal static Command Get(string name) => All.FirstOrDefault(c => c.Name == name) ?? throw new CliError($"Unknown command: {name}");
-    internal static string Help() => "Blindly4 for Windows — native UI Automation, stateless CLI\n" + string.Join("\n", All.Select(c => $"  {c.Name} {c.Arguments}\n    {c.Summary} [{c.Risk}]")) + "\nGlobal: --profile, --self-test, --at UNIX_SECONDS (wait until then, then run). Paths are live: rediscover before input. Serialize desktop workflows.";
+    internal static string Help() => "Blindly4 for Windows — native UI Automation, stateless CLI\n" + string.Join("\n", All.Select(c => $"  {c.Name} {c.Arguments}\n    {c.Summary} [{c.Risk}]")) + "\nGlobal: --profile, --self-test, --at UNIX_SECONDS (wait until then, then run). BLINDLY4_SANDBOX=1 keeps the Chrome that open launches off screen and muted, posts hover and key to its window instead of using the real pointer and keyboard, never takes the foreground, and refuses click, type, paste and scroll. Paths are live: rediscover before input. Serialize desktop workflows.";
 }

@@ -54,7 +54,10 @@ internal static class SelfTest
             == "<AXLink title=\"x\" id=\"video-title\" description=\"y\" frame=\"1,2,3,4\" enabled=\"false\" />");
         Reject(() => Launch.ProfileDir("relative\\dir")); Reject(() => Launch.ProfileDir("C:\\a\"b"));
         Check(Launch.ProfileDir("C:\\profiles\\run1") == "C:\\profiles\\run1");
-        Check(Launch.Arguments("https://www.youtube.com/", "C:\\p\\run 1\\") == "\"--user-data-dir=C:\\p\\run 1\" --force-renderer-accessibility --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --window-size=1400,1000 --new-window \"https://www.youtube.com/\"");
+        Check(Launch.Arguments("https://www.youtube.com/", "C:\\p\\run 1\\", false) == "\"--user-data-dir=C:\\p\\run 1\" --force-renderer-accessibility --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --window-size=1400,1000 --new-window \"https://www.youtube.com/\"");
+        Check(Launch.Arguments("https://x.test/", "C:\\p", true).EndsWith(" --new-window --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling --mute-audio \"https://x.test/\""));
+        Check(!Launch.Arguments("https://x.test/", "C:\\p", false).Contains("--mute-audio"));
+        Check(!Launch.Arguments("https://x.test/", "C:\\p", false).Contains("CalculateNativeWinOcclusion"));
         Reject(() => Xml.Format(new Invocation(Registry.Get("find"), ["--format", "yaml"])));
         Program.Json(new { ok = true, tests = passed, platform = "windows", suite = "permission-free" });
         return 0;

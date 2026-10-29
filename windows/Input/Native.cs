@@ -48,6 +48,7 @@ internal static class Native
     internal static object[] Apps() => Windows().GroupBy(w => w.Pid).Select(g => (object)new { pid = g.Key, name = ProcessName(g.Key), bundleIdentifier = (string?)null, frontmost = g.Key == ForegroundPid, windows = g.Select(w => w.Title).ToArray() }).ToArray();
     internal static void Activate(int pid)
     {
+        if (Sandbox.Active) { if (!Windows().Any(w => w.Pid == pid)) throw CliError.Access($"No visible window for PID {pid}"); return; }
         if (ForegroundPid == pid) return;
         var window = Windows().FirstOrDefault(w => w.Pid == pid) ?? throw CliError.Access($"No visible window for PID {pid}");
         if (IsIconic(window.Handle)) ShowWindow(window.Handle, 9);
@@ -67,6 +68,7 @@ internal static class Native
     }
     internal static void Send(int pid, params INPUT[] inputs)
     {
+        if (Sandbox.Active) throw Sandbox.Refused("this command");
         RequireForeground(pid);
         if (SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>()) != inputs.Length)
             throw CliError.Access("Windows rejected input (possibly an elevated or secure window). Inspect the target before retrying.");
@@ -74,10 +76,12 @@ internal static class Native
     internal static INPUT KeyEvent(ushort key, bool up = false, bool unicode = false) => new() { type = 1, data = new Union { keyboard = new KEYBDINPUT { key = unicode ? (ushort)0 : key, scan = unicode ? key : (ushort)0, flags = (up ? 2u : 0u) | (unicode ? 4u : 0u) } } };
     internal static void Text(int pid, string text)
     {
+        if (Sandbox.Active) throw Sandbox.Refused("typing");
         foreach (char c in text) Send(pid, KeyEvent(c, unicode: true), KeyEvent(c, up: true, unicode: true));
     }
     internal static void Click(int pid, int x, int y)
     {
+        if (Sandbox.Active) throw Sandbox.Refused("click");
         RequireForeground(pid); RequirePoint(pid, x, y);
         if (!SetCursorPos(x, y)) throw CliError.Access("Cannot move the mouse to target");
         RequirePoint(pid, x, y);
@@ -85,6 +89,7 @@ internal static class Native
     }
     internal static void Hover(int pid, int x, int y)
     {
+        if (Sandbox.Active) { Sandbox.Hover(pid, x, y); return; }
         RequireForeground(pid); RequirePoint(pid, x, y);
         // Two positions so the target always observes movement, even if the pointer was already there.
         if (!SetCursorPos(x + 1, y) || !SetCursorPos(x, y)) throw CliError.Access("Cannot move the mouse to target");
@@ -93,6 +98,7 @@ internal static class Native
     static INPUT Mouse(uint flags, uint data = 0) => new() { type = 0, data = new Union { mouse = new MOUSEINPUT { flags = flags, data = data } } };
     internal static void Scroll(int pid, string direction, int amount)
     {
+        if (Sandbox.Active) throw Sandbox.Refused("scroll");
         if (!GetCursorPos(out var point)) throw CliError.Access("Cannot read mouse position");
         RequirePoint(pid, point.X, point.Y);
         int delta = amount * 120 * (direction is "down" or "left" ? -1 : 1);
@@ -115,5 +121,9 @@ internal static class Native
         keys.Add(value);
         return keys.ToArray();
     }
-    internal static void Key(int pid, ushort[] keys) => Send(pid, keys.Select(k => KeyEvent(k)).Concat(keys.Reverse().Select(k => KeyEvent(k, up: true))).ToArray());
+    internal static void Key(int pid, ushort[] keys)
+    {
+        if (Sandbox.Active) { Sandbox.Key(pid, keys); return; }
+        Send(pid, keys.Select(k => KeyEvent(k)).Concat(keys.Reverse().Select(k => KeyEvent(k, up: true))).ToArray());
+    }
 }
